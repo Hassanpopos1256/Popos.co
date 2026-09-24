@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>عالم السيوف والسحر أونلاين</title>
+    <script src="/socket.io/socket.io.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #121212; color: #fff; margin: 0; padding: 10px; }
+        .box { border: 2px solid #333; padding: 12px; margin-bottom: 10px; background: #1e1e1e; border-radius: 8px; }
+        .btn { padding: 12px; color: white; border: none; border-radius: 6px; font-size: 16px; width: 100%; font-weight: bold; margin-top: 5px; cursor: pointer; }
+        .btn-hunt { background: #c0392b; }
+        .btn-upgrade { background: #d35400; }
+        #chat-box { height: 130px; overflow-y: auto; background: #000; padding: 8px; border-radius: 6px; border: 1px solid #444; font-size: 14px; }
+        input[type="text"], select { width: 100%; padding: 12px; margin-bottom: 8px; box-sizing: border-box; background: #2c3e50; color: #fff; border: 1px solid #34495e; border-radius: 6px; }
+    </style>
+</head>
+<body>
+
+    <h2 style="text-align: center; color: #f1c40f;">⚔️ سيرفر السيوف والسحر العربي ⚔</h2>
+
+    <!-- شاشة تسجيل الدخول واختيار الشخصية -->
+    <div id="login-screen" class="box">
+        <h3>مرحباً بك أيها البطل، اختر شخصيتك:</h3>
+        <input type="text" id="username" placeholder="اكتب اسم المقاتل هنا...">
+        <select id="char-type">
+            <option value="warrior">🛡️ المحارب (قتال قريب بالسيوف)</option>
+            <option value="mage">🔮 الساحر (قوى سحرية مدمرة)</option>
+            <option value="elf">🏹 الإلف (سحر الشفاء والسهام)</option>
+        </select>
+        <button class="btn" style="background: #27ae60;" onclick="joinGame()">دخول عالم المعركة</button>
+    </div>
+
+    <!-- شاشة اللعبة الرئيسية المخصصة للهاتف -->
+    <div id="game-screen" class="box" style="display:none;">
+        <h3 id="player-info" style="color: #3498db; margin-top: 0;">المقاتل: </h3>
+        
+        <!-- رصيد العملات والمستويات -->
+        <div class="box" style="background: #2c3e50; border: none;">
+            📊 المستوى: <span id="stat-level" style="color: #f1c40f; font-weight: bold;">1</span><br>
+            💰 الذهب (جولد): <span id="stat-gold" style="color: #2ecc71; font-weight: bold;">0</span><br>
+            💎 الماس المضاف من المطور: <span id="stat-diamonds" style="color: #9b59b6; font-weight: bold;">0</span><br>
+            ⚔️ مستوى السلاح: <span id="stat-weapon" style="color: #e74c3c; font-weight: bold;">+1</span>
+        </div>
+
+        <!-- الأكشن والمهمات -->
+        <div class="box">
+            <h4 style="margin: 0 0 8px 0; color: #f39c12;">🎯 المهام والقتال:</h4>
+            <button class="btn btn-hunt" onclick="huntMonster()">⚔️ الهجوم على الوحوش (تطوير ومهمات)</button>
+            <p style="font-size: 13px; color: #aaa; margin: 5px 0;">* اقتل 5 وحوش لإكمال مهمة المبتدئين واكتساب مستويات وجولد مجاني!</p>
+        </div>
+
+        <!-- تطوير الأسلحة -->
+        <div class="box">
+            <h4 style="margin: 0 0 8px 0; color: #f39c12;">🔥 حداد القرية:</h4>
+            <button class="btn btn-upgrade" onclick="upgradeWeapon()">⚒️ ترقية السيف / العصا السحرية</button>
+        </div>
+
+        <!-- الشات الفوري بين اللاعبين -->
+        <div class="box">
+            <h4 style="margin: 0 0 8px 0; color: #f39c12;">💬 شات السيرفر العام:</h4>
+            <div id="chat-box"></div>
+            <table style="width: 100%; margin-top: 5px;">
+                <tr>
+                    <td style="width: 80%;"><input type="text" id="chat-msg" placeholder="اكتب رسالتك للمقاتلين..." style="margin: 0;"></td>
+                    <td><button onclick="sendChat()" style="padding: 11px; background: #2980b9; color: white; border: none; border-radius: 6px; width: 100%; font-weight: bold;">إرسال</button></td>
+                </tr>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        const socket = io();
+
+        function joinGame() {
+            const user = document.getElementById('username').value;
+            const type = document.getElementById('char-type').value;
+            if (!user) return alert("من فضلك اكتب اسم مقاتلك أولاً!");
+            
+            socket.emit('join_game', { username: user, charType: type });
+            document.getElementById('login-screen').style.display = 'none';
+            document.getElementById('game-screen').style.display = 'block';
+        }
+
+        socket.on('game_state', (data) => {
+            let charNameAr = data.char_type === 'warrior' ? 'محارب سيوف' : data.char_type === 'mage' ? 'ساحر كونكر' : 'إلف سحري';
+            document.getElementById('player-info').innerText = `البطل: ${data.username} [${charNameAr}]`;
+            document.getElementById('stat-level').innerText = data.player_level;
+            document.getElementById('stat-gold').innerText = data.gold;
+            document.getElementById('stat-diamonds').innerText = data.diamonds;
+            document.getElementById('stat-weapon').innerText = `+${data.weapon_level}`;
+        });
+
+        function huntMonster() { socket.emit('hunt_monster'); }
+        function upgradeWeapon() { socket.emit('upgrade_weapon'); }
+
+        function sendChat() {
+            const input = document.getElementById('chat-msg');
+            if (input.value) {
+                socket.emit('send_chat', input.value);
+                input.value = '';
+            }
+        }
+
+        socket.on('chat_message', (msg) => {
+            const box = document.getElementById('chat-box');
+            box.innerHTML += `<p style="margin: 4px 0;"><strong>[${msg.sender}]:</strong> ${msg.text}</p>`;
+            box.scrollTop = box.scrollHeight;
+        });
+    </script>
+</body>
+</html>
